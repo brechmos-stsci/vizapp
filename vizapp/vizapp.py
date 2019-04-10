@@ -50,6 +50,7 @@ class VizApp:
                 raise TypeError('add_3d_processing: each parameter must be a parameter name and default value')
 
         self._3d_processing[name] = {
+            'name': name,
             'method': func,
             'parameters': parameters
         }
