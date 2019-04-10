@@ -8,53 +8,6 @@ from .viewer import Viewer
 class ViewerND(Viewer):
 
     def __init__(self, *args, **kwargs):
-
-        """
-        Viewer3D is a layer that defines the data dropdown, overlay dropdown
-        and some other things. It would be sub-classed in order to define the
-        method of actually displaying.
-        """
-        super().__init__(*args, **kwargs)
-
-        # Slice slider needs to be defined along with self._slice_slider_on_value_change
-        self._slice_slider = None
-
-        # Data selector needs to be defined along with self._data_dropdown_on_change
-        self._data_dropdown = None
-
-        # Overlay selector needs to be defined along with self._data_overlay_on_change
-        self._overlay_dropdown = None
-
-    #
-    # Call backs
-    #
-
-    def _data_dropdown_on_change(self, change):
-        """
-        Change of data selector.
-        """
-        raise NotImplementedError('Must implement in a sub-class')
-
-
-    def _overlay_dropdown_on_change(self, change):
-        """
-        Change of overlay selector.
-        """
-        raise NotImplementedError('Must implement in a sub-class')
-
-    def _slice_slider_on_value_change(self, change):
-        """
-        Call back for int slider call back
-        """
-        raise NotImplementedError('Must implement in a sub-class')
-
-    def _show_image(self):
-        raise NotImplementedError('Must implement in a sub-class')
-
-
-class PlotlyViewerND(ViewerND):
-
-    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self._thedata = self._vizapp.get_data(0)
@@ -111,8 +64,7 @@ class PlotlyViewerND(ViewerND):
                 self._current_slice = self._thedata.shape[0] - 1
 
             # Get the data and update the figure
-            td = self._thedata[self._current_slice]
-            self._fig.data[0].update({'z': td})
+            self._update_image()
 
     def _overlay_dropdown_on_change(self, change):
         """
@@ -242,12 +194,39 @@ class PlotlyViewerND(ViewerND):
                 else:
                     self._current_slice = sl
 
-                # Get the data and update the figure
-                td = self._thedata[sl]
-                self._fig.data[0].update({'z': td})
+                self._update_image()
 
         except Exception as e:
             print(change)
+
+    def _show_image(self):
+        raise NotImplementedError('Must be implemented in a sub-class')
+
+    def _update_image(self):
+        raise NotImplementedError('Must be implemented in a sub-class')
+
+    def show(self):
+        display(
+            HBox([
+                VBox([
+                    self._line1,
+                    self._fig,
+                    HBox([self._slice_slider, self._processing_dropdown])
+                ]),
+
+                # Add in the vertical thing on the right for processing parameters
+                self._processing_vbox
+            ])
+        )
+
+class PlotlyViewerND(ViewerND):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def _update_image(self):
+        td = self._thedata[self._current_slice]
+        self._fig.data[0].update({'z': td})
 
     def _show_image(self):
 
@@ -311,18 +290,3 @@ class PlotlyViewerND(ViewerND):
         }
 
         self._gofig = go.Figure(data=self._data, layout=layout)
-
-
-    def show(self):
-        display(
-            HBox([
-                VBox([
-                    self._line1,
-                    self._fig,
-                    HBox([self._slice_slider, self._processing_dropdown])
-                ]),
-
-                # Add in the vertical thing on the right for processing parameters
-                self._processing_vbox
-            ])
-        )
