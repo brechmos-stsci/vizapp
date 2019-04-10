@@ -1,6 +1,7 @@
-from ipywidgets import IntSlider, Dropdown, HBox, VBox, Textarea, Label, FloatText
 import numpy as np
 import plotly.graph_objs as go
+from ipywidgets import IntSlider, Dropdown, HBox, VBox, Label, FloatText, Button
+
 
 class Viewer:
 
@@ -108,7 +109,16 @@ class PlotlyViewer3D(Viewer3D):
 
     def _data_dropdown_on_change(self, change):
         """
-        Change of data selector.
+        Callback: Data dropdown change.
+
+        Parameters
+        ----------
+        change : dict
+            Change information from ipywidgets
+
+        Returns
+        -------
+
         """
         if change['type'] == 'change' and change['name'] == 'value':
             self._thedata = self._vizapp.get_data(change['new'])
@@ -116,10 +126,27 @@ class PlotlyViewer3D(Viewer3D):
             # Set the slice slider maximum
             self._slice_slider.max = self._thedata.shape[0]
 
+            if self._current_slice > self._thedata.shape[0] - 1:
+                self._current_slice = self._thedata.shape[0] - 1
+
+            # Get the data and update the figure
+            td = self._thedata[self._current_slice]
+            self._fig.data[0].update({'z': td})
+
     def _overlay_dropdown_on_change(self, change):
         """
-        Change of overlay selector.
+        Callback: 2D overlay call back change.
+
+        Parameters
+        ----------
+        change : dict
+            Change information from ipywidgets
+
+        Returns
+        -------
+
         """
+
         if change['type'] == 'change' and change['name'] == 'value':
             self._theoverlay = self._vizapp.get_data(change['new'])
 
@@ -137,22 +164,90 @@ class PlotlyViewer3D(Viewer3D):
                 self._build_procesing_panel(self._vizapp.get_3d_processing(change['new']))
 
     def _build_procesing_panel(self, processing_info):
+        """
+        Build up the processing panel for filtering data.
 
-        parameters = processing_info['parameters']
+        Parameters
+        ----------
+        processing_info: dict
+            Processing information that contains name and parameters.
+
+        Returns
+        -------
+
+        """
+        self._processing_parameters = processing_info
 
         parameter_list = []
-        for parameter in parameters:
-            if True or isinstance(parameters[1], float):
-                box = HBox((Label(parameter[0]), FloatText(value=3.0, width=20) ))
+
+        # Add the title to the top of the processing area.
+        title = Label('Process: ' + processing_info['name'], style={'font-weight': 'bold', 'font-size': '1.5em'})
+        title.layout.width = '100%'
+
+        parameter_list.append(title)
+
+        # Add all the parameters
+        for parameter in self._processing_parameters.get('parameters'):
+            if isinstance(parameter[1], float):
+
+                label = Label(parameter[0])
+                label.layout.width = '50%'
+
+                ft = FloatText(value=parameter[1])
+                ft.layout.width = '50%'
+
+                box = HBox((label, ft ))
                 parameter_list.append(box)
+
+        # Add the Cancel and Process buttons
+        cancel_button = Button(description='Cancel', value='Cancel')
+        cancel_button.button_style = 'danger'
+        cancel_button.on_click(self._processing_cancel_button_callback)
+
+        process_button = Button(description='Process', value='Process')
+        process_button.button_style = 'success'
+        process_button.on_click(self._processing_process_button_callback)
+
+        parameter_list.append(HBox((process_button, cancel_button)))
+
+        # Add them all to the VBox
         self._processing_vbox.children = tuple(parameter_list)
+
+    def _processing_cancel_button_callback(self, *args, **kwargs):
+        self._processing_vbox.children = ()
+
+    def _processing_process_button_callback(self, *args, **kwargs):
+
+        # Get the data
+        data_name = self._data_dropdown.value
+        data = self._vizapp.get_data(data_name)
+
+        new_data = self._processing_parameters['method'](data,
+                                                         self._processing_parameters['parameters'][1][1])
+
+        self._vizapp.add_data(data_name + '-' + self._processing_parameters['name'], new_data)
+
+        # Reset the GUI
+        self._processing_dropdown.index=0
+        self._processing_vbox.children = ()
+
+        self._data_dropdown.options = self._vizapp._3d_data.keys()
+
+
 
     def _slice_slider_on_value_change(self, change):
         """
-        Call back for int slider call back
-        """
+        Callback: Slice Slider change
 
-        self._change = change
+        Parameters
+        ----------
+        change: dict
+            Dictionary of change information from an ipywidgets item.
+
+        Returns
+        -------
+
+        """
 
         # Get the new value and make sure we are looking only for change
         # in value
@@ -164,7 +259,7 @@ class PlotlyViewer3D(Viewer3D):
                 if sl == self._current_slice:
                     return
                 else:
-                    self._current_slice = slice
+                    self._current_slice = sl
 
                 # Get the data and update the figure
                 td = self._thedata[sl]
