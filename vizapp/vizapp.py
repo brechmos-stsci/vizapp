@@ -1,6 +1,14 @@
 import inspect
+import logging
 
 import numpy as np
+
+logging.basicConfig(filename='/tmp/vizapp.log',
+                            filemode='a',
+                            format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
+                            datefmt='%H:%M:%S',
+                            level=logging.DEBUG)
+logger = logging.getLogger('vizapp')
 
 
 class VizApp:
@@ -14,8 +22,8 @@ class VizApp:
         self._1d_data = {}
 
         self._3d_processing = {}
-        self.add_3d_processing("Median Collapse", lambda x: np.nanmedian(x, axis=0), [])
-        self.add_3d_processing("Mean Collapse", lambda x: np.nanmean(x, axis=0), [])
+        self.add_3d_processing("Median Collapse", np.nanmedian, 'a', (('axis', 0),))
+        self.add_3d_processing("Mean Collapse", np.nanmean, 'a', (('axis', 0),))
 
         self._2d_processing = {}
 
@@ -27,7 +35,7 @@ class VizApp:
     #
     # ---------------------------------------------------------------
 
-    def add_3d_processing(self, name, func, parameters):
+    def add_3d_processing(self, name, func, data_parameter, parameters):
         """
 
         :param name: str name to display
@@ -35,6 +43,7 @@ class VizApp:
         :param parameters: tuple - list of parameters
         :return: none
         """
+        logger.debug('parameters is {}'.format(parameters))
 
         if not isinstance(name, str):
             raise TypeError('add_3d_processing: name, {}, must be a string')
@@ -42,16 +51,20 @@ class VizApp:
         if not inspect.isfunction(func):
             raise TypeError('add_3d_processing: func must be a method')
 
-        if not isinstance(parameters, list):
+        if not isinstance(data_parameter, str):
+            raise TypeError('add_3d_processing: data_parameter, {}, must be a string')
+
+        if not isinstance(parameters, (list, tuple)):
             raise TypeError('add_3d_processing: parameters must be a list')
 
         if parameters:
-            if any([not isinstance(x, tuple) or not len(x) == 2 for x in parameters]):
+            if any([not isinstance(x, tuple) or not len(x) in [0,2] for x in parameters]):
                 raise TypeError('add_3d_processing: each parameter must be a parameter name and default value')
 
         self._3d_processing[name] = {
             'name': name,
             'method': func,
+            'data_parameter': data_parameter,
             'parameters': parameters
         }
 
@@ -98,6 +111,7 @@ class VizApp:
         :param data: Numpy array of data.
         :return:
         """
+        logger.debug('Adding data {} {}'.format(name, data.shape))
         if len(data.shape) == 3:
             self._3d_data[name] = data
         if len(data.shape) == 2:
@@ -119,6 +133,10 @@ class VizApp:
 
             return self._3d_data[key]
         elif isinstance(name, str):
-            return self._3d_data[name]
+
+            if name in self._3d_data:
+               return self._3d_data[name]
+            elif name in self._2d_data:
+                return self._2d_data[name]
         else:
             raise('get_data takes an int or string.')
