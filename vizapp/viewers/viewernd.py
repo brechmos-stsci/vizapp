@@ -2,29 +2,10 @@ import numpy as np
 import plotly.graph_objs as go
 from ipywidgets import IntSlider, Dropdown, HBox, VBox, Label, FloatText, Button
 
-
-class Viewer:
-
-    def __init__(self, vizapp):
-
-        self._vizapp = vizapp
+from .viewer import Viewer
 
 
-class Viewer1D(Viewer):
-
-    def __init__(self, *args, **kwargs):
-
-        super().__init__(*args, **kwargs)
-
-
-class Viewer2D(Viewer):
-
-    def __init__(self, *args, **kwargs):
-
-        super().__init__(*args, **kwargs)
-
-
-class Viewer3D(Viewer):
+class ViewerND(Viewer):
 
     def __init__(self, *args, **kwargs):
 
@@ -71,7 +52,7 @@ class Viewer3D(Viewer):
         raise NotImplementedError('Must implement in a sub-class')
 
 
-class PlotlyViewer3D(Viewer3D):
+class PlotlyViewerND(ViewerND):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
