@@ -12,6 +12,8 @@ logging.basicConfig(filename='/tmp/vizapp.log',
 logger = logging.getLogger('vizapp')
 
 
+
+
 class VizApp:
 
     def __init__(self):
