@@ -2,7 +2,7 @@ import logging
 
 import numpy as np
 import plotly.graph_objs as go
-from ipywidgets import IntSlider, Dropdown, HBox, VBox, Label, FloatText, Button, IntText
+from ipywidgets import IntSlider, Dropdown, HBox, VBox, Label, Text, FloatText, Button, IntText
 
 from .viewer import Viewer
 
@@ -133,15 +133,18 @@ class ViewerND(Viewer):
 
         # Add all the parameters
         for parameter in self._processing_parameters.get('parameters'):
-            if isinstance(parameter[1], (int, float)):
+            if isinstance(parameter[1], (int, float, str, list, tuple)):
 
                 label = Label(parameter[0])
                 label.layout.width = '50%'
 
+                # TODO: This needs to be cleaned up / generalized.
                 if isinstance(parameter[1], int):
                     ft = IntText(value=parameter[1])
                 elif isinstance(parameter[1], float):
                     ft = FloatText(value=parameter[1])
+                else:
+                    ft = Text(value=str(parameter[1]))
                 ft.layout.width = '50%'
 
                 box = HBox((label, ft ))
@@ -191,6 +194,12 @@ class ViewerND(Viewer):
                 logger.debug('label is {}'.format(label))
                 logger.debug('box is {}'.format(box))
                 params[label.value] = box.value
+            elif hasattr(row, 'children') and len(row.children) == 2 and isinstance(row.children[1], Text):
+                label, box = row.children
+                logger.debug('label is {}'.format(label))
+                logger.debug('box is {}'.format(box))
+                # TODO: Look into a better way of doing this.
+                params[label.value] = eval(box.value)
 
         logger.debug('Got parameters {}'.format(params))
 
@@ -279,8 +288,7 @@ class PlotlyViewerND(ViewerND):
                 "y": np.arange(74),
                 "z": self._theoverlay,
                 "opacity": 0.5,
-                "showlegend": False,
-                "type": "heatmap"
+                "showlegend": False
             })
         else:
             self._fig.data[1].update({
@@ -288,22 +296,23 @@ class PlotlyViewerND(ViewerND):
                 "y": [0],
                 "z": [0],
                 "opacity": 1,
-                "showlegend": False,
-                "type": "heatmap"
+                "showlegend": False
             })
+
+    def _scale255(self, data):
+        logger.debug('Going to scale data of size {}'.format(data.shape))
+        return np.floor(255* (data - np.nanmin(data)) / (np.nanmax(data) - np.nanmin(data)))
 
     def _show_image(self):
 
         self._current_slice = 0
-
-        colorscale = [(x, 'rgb({}, {}, {})'.format(int(x*255), int(x*255), int(x*255))) for x in np.arange(0, 1, 0.1)]
 
         self._trace1 = {
             "name": "data",
             "x": np.arange(74),
             "y": np.arange(74),
             "z": self._thedata[0],
-            "colorscale": colorscale,
+            "colorscale": 'Greys',
             "showlegend": False,
             "type": "heatmap"
         }
@@ -321,9 +330,11 @@ class PlotlyViewerND(ViewerND):
             "y": [0],
             "z": [0],
             "opacity": 1,
-            "colorscale": colorscale,
+            "colorscale": 'Hot',
+            "showscale": False,
             "showlegend": False,
-            "type": "heatmap"
+            "ncontours": 30,
+            "type": "contour"
         }
 
         data2show += [overlay_data]
